@@ -16,18 +16,12 @@ https://github.com/lolomolo/Max14921BMS
 #include <wiringPi.h>
 using namespace std;
 
-
-// channel is the wiringPi name for the chip select (or chip enable) pin.
-// Set this to 0 or 1, depending on how it's connected.
-
-
 static const float vref = 4.08;
-unsigned char buffer[100];
+unsigned char adcBuffer[100];
+unsigned char bmsBuffer[100];
 
 
-int spiCom(int channel, int rate, int mode) {
-	wiringPiSPISetupMode(channel, rate, mode);
-
+int spiCom(unsigned char *buffer, int channel, int rate, int mode) {
 
    	buffer[0] = 0xAA;
 	buffer[1] = 0XAA;
@@ -44,16 +38,17 @@ int spiCom(int channel, int rate, int mode) {
    	usleep(20000);
 }
 
-int main()
-{
-   int CHANNEL = 1;
+int main() {
+	int CHANNEL = 1;
+	int rate = 500000;
+	int defMode = 3;
 
-   buffer[0] = 0xAA;
-   buffer[1] = 0b00001010;
+   	adcBuffer[0] = 0xAA;
+   	adcBuffer[1] = 0b00001010;
    
-
-   for(int i = 0; i<100; i++) {
-	spiCom(CHANNEL, 500000, 3);
-   }
-
+  	wiringPiSPISetupMode(CHANNEL, rate, defMode);
+   	
+	for(int i = 0; i<100; i++) {
+		spiCom(adcBuffer, CHANNEL, 500000, 3);
+   	}
 }
