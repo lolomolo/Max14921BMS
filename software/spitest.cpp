@@ -23,10 +23,13 @@ static const int adcCHANNEL = 1;
 static const int bmsCHANNEL = 0;
 
 static const int adcRate = 500000;
-static const int bmsRate = 100000;
+static const int bmsRate = 500000;
 
 static const int adcMode = 0;
 static const int bmsMode = 0;
+
+static const int cellLookup[] = {0b0000,0b1000,0b0100,0b1100,0b0010,0b1010,0b0110,0b1110,0b0001,0b1001,0b0101,0b1101,0b0011,0b1011,0b0111,0b1111};
+
 
 
 int convTwoToDec(uint16_t twos) {
@@ -51,30 +54,43 @@ void printBytes(unsigned char *buffer,int bytes) {
 	cout << endl;	
 }
 
-int gpio(int pin, bool state) {
+int readCell(int cell) {
 	
-}
-int main() {
-	wiringPiSPISetupMode(bmsCHANNEL, bmsRate, bmsMode);
-	wiringPiSPISetupMode(adcCHANNEL, adcRate, adcMode);
-
-	for(int i = 0; i<10; i++) {
-		cout << endl << "adcBuffer:" << endl;
-		wiringPiSPIDataRW(adcCHANNEL, adcBuffer, 2); 
-		printBytes(adcBuffer, 2);
-		cout << ((adcBuffer[0]<<8)|adcBuffer[1]) << endl;
-   		
-		usleep(100);
-
+		//Initiate sample	
+		usleep(40000); //wait 40ms for voltages to settle
 		bmsBuffer[0]=0x00;
 		bmsBuffer[1]=0x00;
-		bmsBuffer[2]=0b01000100;
+		bmsBuffer[2]=0b00000100;
+		//cout << endl << "bmsBuffer:" << endl;
+		wiringPiSPIDataRW(bmsCHANNEL, bmsBuffer, 3); 
+		//printBytes(bmsBuffer, 3);
+		//cout << ((bmsBuffer[0]<<16)|(bmsBuffer[1]<<8)|bmsBuffer[2]) << endl;
+		
+		usleep(50); //Wait 50us for voltages to be shifted to GndRef
+
+		//Read in cell voltage
+		bmsBuffer[0]=0x00;
+		bmsBuffer[1]=0x00;
+		bmsBuffer[2]=0b10000000|(cellLookup[cell]<<7); //Display cell on Aout
 		cout << endl << "bmsBuffer:" << endl;
 		wiringPiSPIDataRW(bmsCHANNEL, bmsBuffer, 3); 
 		printBytes(bmsBuffer, 3);
 		cout << ((bmsBuffer[0]<<16)|(bmsBuffer[1]<<8)|bmsBuffer[2]) << endl;
 		
-		usleep(1000000);
+}
+int main() {
+	wiringPiSPISetupMode(bmsCHANNEL, bmsRate, bmsMode);
+	wiringPiSPISetupMode(adcCHANNEL, adcRate, adcMode);
+	for(int	i = 0; i<1; i++) {
+		cout << "cell " << i <<  endl;
+		readCell(i);
+			
+		cout << endl << "adcBuffer:" << endl;
+		wiringPiSPIDataRW(adcCHANNEL, adcBuffer, 2); 
+		printBytes(adcBuffer, 2);
+		cout << ((adcBuffer[0]<<8)|adcBuffer[1]) << endl;
+   		
+		usleep(10000);
 	}
 }
 
