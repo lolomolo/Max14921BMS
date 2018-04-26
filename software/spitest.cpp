@@ -19,36 +19,62 @@ using namespace std;
 static const float vref = 4.08;
 unsigned char adcBuffer[100];
 unsigned char bmsBuffer[100];
+static const int adcCHANNEL = 1;
+static const int bmsCHANNEL = 0;
+
+static const int adcRate = 500000;
+static const int bmsRate = 100000;
+
+static const int adcMode = 0;
+static const int bmsMode = 0;
 
 
-int spiCom(unsigned char *buffer, int channel, int rate, int mode) {
-
-   	buffer[0] = 0xAA;
-	buffer[1] = 0XAA;
-
-
-	cout << "buffer[0]: " << std::bitset<8>(buffer[0]) << endl;
-   	cout << "buffer[1]: " << std::bitset<8>(buffer[1]) << endl;
-	wiringPiSPIDataRW(channel, buffer, 2);
-   	cout << "new buffer[0]: " << std::bitset<8>(buffer[0]) << endl;
-   	cout << "new buffer[1]: " << std::bitset<8>(buffer[1]) << endl;
-	float aout = (buffer[1]+(buffer[0]<<8));
-	aout=vref*(aout/(1<<13));
-	cout << "voltage reading: " << aout << endl << endl;
-   	usleep(20000);
+int convTwoToDec(uint16_t twos) {
+	if((twos & 0b0010000000000000)==0){
+		cout << "pos " << twos <<endl;
+		return(twos);
+	} else {
+		int derp =(~(twos << 3)-1);
+		cout << "neg "<< twos << "bits and shit: " << std::bitset<16>(derp) <<endl;
+		return(derp);
+	}
 }
 
+void printBytes(unsigned char *buffer,int bytes) {
+	int bits = 8*bytes;
+	for(int i = 0; i<bytes; i++) {
+	cout << "  [" << i << "]: ";
+		for(int j = 7; j>=0; j--) {
+			cout << std::bitset<1>(buffer[i] >> j);
+		}
+	}
+	cout << endl;	
+}
+
+int gpio(int pin, bool state) {
+	
+}
 int main() {
-	int CHANNEL = 1;
-	int rate = 500000;
-	int defMode = 3;
+	wiringPiSPISetupMode(bmsCHANNEL, bmsRate, bmsMode);
+	wiringPiSPISetupMode(adcCHANNEL, adcRate, adcMode);
 
-   	adcBuffer[0] = 0xAA;
-   	adcBuffer[1] = 0b00001010;
-   
-  	wiringPiSPISetupMode(CHANNEL, rate, defMode);
-   	
-	for(int i = 0; i<100; i++) {
-		spiCom(adcBuffer, CHANNEL, 500000, 3);
-   	}
+	for(int i = 0; i<10; i++) {
+		cout << endl << "adcBuffer:" << endl;
+		wiringPiSPIDataRW(adcCHANNEL, adcBuffer, 2); 
+		printBytes(adcBuffer, 2);
+		cout << ((adcBuffer[0]<<8)|adcBuffer[1]) << endl;
+   		
+		usleep(100);
+
+		bmsBuffer[0]=0x00;
+		bmsBuffer[1]=0x00;
+		bmsBuffer[2]=0b01000100;
+		cout << endl << "bmsBuffer:" << endl;
+		wiringPiSPIDataRW(bmsCHANNEL, bmsBuffer, 3); 
+		printBytes(bmsBuffer, 3);
+		cout << ((bmsBuffer[0]<<16)|(bmsBuffer[1]<<8)|bmsBuffer[2]) << endl;
+		
+		usleep(1000000);
+	}
 }
+
